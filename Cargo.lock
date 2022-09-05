@@ -4252,6 +4252,7 @@ checksum = "d86a8dc7f45e4c1b0d30e43038c38f274e77af056aa5f74b93c2cf9eb3c1c836"
 name = "uptime-checker"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "blake2b_simd 1.0.0",
  "cid",
  "fvm",

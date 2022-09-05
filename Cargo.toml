@@ -22,6 +22,7 @@ serde_tuple = "0.5"
 num-traits = "0.2.14"
 num = "0.2.1"
 lazy_static = "1.4.0"
+anyhow = "1.0.63"
 
 [dev-dependencies]
 fvm = { git = "https://github.com/adlrocha/ref-fvm.git" }

@@ -1,12 +1,10 @@
-use std::convert::TryFrom;
-
+use crate::Error;
 use cid::multihash::Code;
 use cid::Cid;
 use fvm_ipld_blockstore::Block;
-use fvm_ipld_hamt::{BytesKey, Error as HamtError, Hamt};
+use fvm_ipld_hamt::{BytesKey, Hamt};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use crate::Error;
 
 const HAMT_BIT_WIDTH: u32 = 5;
 
@@ -14,29 +12,31 @@ const HAMT_BIT_WIDTH: u32 = 5;
 pub struct Blockstore;
 
 impl fvm_ipld_blockstore::Blockstore for Blockstore {
-    fn get(&self, cid: &Cid) -> Result<Vec<u8>, Error> {
-        fvm_sdk::ipld::get(cid).into()
+    fn get(&self, cid: &Cid) -> Result<Option<Vec<u8>>, anyhow::Error> {
+        Ok(Option::from(fvm_sdk::ipld::get(cid)?))
     }
 
-    fn put_keyed(&self, k: &Cid, block: &[u8]) -> Result<(), Error> {
-        let code = Code::try_from(k.hash().code()).map_err(|e| anyhow!(e.to_string()))?;
-        let k2 = self.put(code, &Block::new(k.codec(), block))?;
-        if k != &k2 {
-            return Err(anyhow!("put block with cid {} but has cid {}", k, k2));
-        }
-        Ok(())
+    fn put_keyed(&self, k: &Cid, block: &[u8]) -> Result<(), anyhow::Error> {
+        // let code = Code::try_from(k.hash().code()).map_err(|e| anyhow!(e.to_string()))?;
+        // let k2 = self.put(code, &Block::new(k.codec(), block))?;
+        // if k != &k2 {
+        //     return Err(anyhow!("put block with cid {} but has cid {}", k, k2));
+        // }
+        // Ok(())
+        todo!()
     }
 
-    fn put<D>(&self, code: Code, block: &Block<D>) -> Result<Cid, Error>
-        where
-            D: AsRef<[u8]>,
+    fn put<D>(&self, code: Code, block: &Block<D>) -> Result<Cid, anyhow::Error>
+    where
+        D: AsRef<[u8]>,
     {
-        // TODO: Don't hard-code the size. Unfortunately, there's no good way to get it from the
-        //  codec at the moment.
-        const SIZE: u32 = 32;
-        let k = fvm_sdk::ipld::put(code.into(), SIZE, block.codec, block.data.as_ref())
-            .map_err(|e| anyhow!("put failed with {:?}", e))?;
-        Ok(k)
+        todo!()
+        // // TODO: Don't hard-code the size. Unfortunately, there's no good way to get it from the
+        // //  codec at the moment.
+        // const SIZE: u32 = 32;
+        // let k = fvm_sdk::ipld::put(code.into(), SIZE, block.codec, block.data.as_ref())
+        //     .map_err(|e| anyhow!("put failed with {:?}", e))?;
+        // Ok(k)
     }
 }
 
@@ -45,23 +45,27 @@ pub type Map<'bs, BS, V> = Hamt<&'bs BS, V, BytesKey>;
 
 /// Create a hamt with a custom bitwidth.
 #[inline]
-pub fn make_empty_map<BS, V>(store: &'_ BS) -> Map<'_, BS, V>
-    where
-        BS: fvm_ipld_blockstore::Blockstore,
-        V: DeserializeOwned + Serialize,
+pub(crate) fn make_empty_map<BS, V>(store: &'_ BS) -> Map<'_, BS, V>
+where
+    BS: fvm_ipld_blockstore::Blockstore,
+    V: DeserializeOwned + Serialize,
 {
     Map::<_, V>::new_with_bit_width(store, HAMT_BIT_WIDTH)
 }
 
 /// Create a map with a root cid.
 #[inline]
-pub fn make_map_with_root<'bs, BS, V>(
-    root: &Cid,
+pub(crate) fn get_map_from_cid<'bs, BS, V>(
+    cid: &Cid,
     store: &'bs BS,
-) -> Result<Map<'bs, BS, V>, HamtError>
-    where
-        BS: fvm_ipld_blockstore::Blockstore,
-        V: DeserializeOwned + Serialize,
+) -> Result<Map<'bs, BS, V>, Error>
+where
+    BS: fvm_ipld_blockstore::Blockstore,
+    V: DeserializeOwned + Serialize,
 {
-    Map::<_, V>::load_with_bit_width(root, store, HAMT_BIT_WIDTH)
+    Ok(Map::<_, V>::load_with_bit_width(
+        cid,
+        store,
+        HAMT_BIT_WIDTH,
+    )?)
 }

@@ -1,3 +1,5 @@
+use cid::Cid;
+use fvm_shared::clock::ChainEpoch;
 use crate::error::Error;
 use crate::types::{InitParams, NodeInfo, PeerID};
 
@@ -98,4 +100,31 @@ pub trait UptimeCheckerActor {
     /// it removes PeerID from checkers if the number of
     /// votes > 2/3 checkers
     fn report_checker(params: PeerID) -> Result<(), Error>;
+}
+
+pub trait LoadableState {
+    fn new(nodes: Vec<NodeInfo>) -> Result<Self, Error> where Self: Sized;
+
+    fn upsert_node(&mut self, node: NodeInfo) -> Result<(), Error>;
+
+    fn remove_node(&mut self, id: &PeerID) -> Result<(), Error>;
+
+    fn upsert_checker(&mut self, node: NodeInfo) -> Result<(), Error>;
+
+    fn remove_checker(&mut self, id: &PeerID) -> Result<(), Error>;
+
+    /// Removes the checker without performing owner check. Use with care.
+    fn remove_checker_unchecked(&mut self, id: &PeerID) -> Result<(), Error>;
+
+    fn has_voted(&self, p: &PeerID) -> bool;
+
+    fn record_voted(&mut self, p: &PeerID) -> usize;
+
+    fn total_checkers(&self) -> usize;
+
+    fn vote_threshold(&self) -> ChainEpoch;
+
+    fn load() -> Result<Self, Error> where Self: Sized;
+
+    fn save(&self) -> Result<Cid, Error>;
 }
