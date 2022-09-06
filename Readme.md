@@ -1,0 +1,1 @@
+cp ~/Documents/ProtocolLab/uptime-checker/target/debug/wbuild/uptime-checker/uptime_checker.compact.wasm ~/Documents/ProtocolLab/lotus-fvm/
