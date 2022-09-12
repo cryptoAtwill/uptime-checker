@@ -7,6 +7,17 @@ pub type PeerID = String;
 /// The libp2p multi address
 pub type MultiAddr = String;
 
+#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub struct ReportPayload {
+    pub checker: ActorID
+}
+
+#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub struct NodeInfoPayload {
+    id: PeerID,
+    addresses: Vec<MultiAddr>,
+}
+
 /// Member nodes information
 #[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub struct NodeInfo {
@@ -27,11 +38,17 @@ pub struct NodeInfo {
     addresses: Vec<MultiAddr>,
 }
 
-impl NodeInfo {
-    pub fn id(&self) -> &PeerID {
-        &self.id
+impl From<NodeInfoPayload> for NodeInfo {
+    fn from(p: NodeInfoPayload) -> Self {
+        NodeInfo {
+            creator: fvm_sdk::message::caller(),
+            id: p.id,
+            addresses: p.addresses
+        }
     }
+}
 
+impl NodeInfo {
     pub fn creator(&self) -> &ActorID {
         &self.creator
     }
@@ -45,13 +62,13 @@ impl NodeInfo {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 pub struct Votes {
     /// Time of the last offline vote received by a
     /// checker.
     pub last_vote: ChainEpoch,
     /// Checkers that have voted
-    pub votes: Vec<PeerID>,
+    pub votes: Vec<ActorID>,
 }
 
 impl Votes {
@@ -59,7 +76,7 @@ impl Votes {
         Self { last_vote: epoch, votes: vec![] }
     }
 
-    pub fn has_voted(&self, p: &PeerID) -> bool {
+    pub fn has_voted(&self, p: &ActorID) -> bool {
         self.votes.contains(p)
     }
 
@@ -67,8 +84,8 @@ impl Votes {
         self.last_vote + threshold < epoch
     }
 
-    pub fn vote(&mut self, p: &PeerID) {
-        self.votes.push(p.clone())
+    pub fn vote(&mut self, p: &ActorID) {
+        self.votes.push(*p)
     }
 
     pub fn total_votes(&self) -> usize {

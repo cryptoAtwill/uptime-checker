@@ -1,7 +1,8 @@
 use cid::Cid;
+use fvm_shared::ActorID;
 use fvm_shared::clock::ChainEpoch;
 use crate::error::Error;
-use crate::types::{InitParams, NodeInfo, PeerID};
+use crate::types::{InitParams, NodeInfo, NodeInfoPayload, ReportPayload};
 
 pub trait UptimeCheckerActor {
     /// Initializes the state of the uptime actor. It accepts
@@ -23,7 +24,7 @@ pub trait UptimeCheckerActor {
     /// - methodNum: 2
     /// - allowed callers: any account.
     /// - impacted state: checkers HAMT is updated.
-    fn new_checker(params: NodeInfo) -> Result<(), Error>;
+    fn new_checker(params: NodeInfoPayload) -> Result<(), Error>;
 
     /// Adds a new member to the list of nodes to be checked.
     /// This method checks that a member for that
@@ -33,7 +34,7 @@ pub trait UptimeCheckerActor {
     /// - methodNum: 3
     /// - allowed callers: any account.
     /// - impacted state: members HAMT is updated.
-    fn new_member(params: NodeInfo) -> Result<(), Error>;
+    fn new_member(params: NodeInfoPayload) -> Result<(), Error>;
 
     /// Edits the node information of a checker. The method
     /// checks that the owner of the peer is the one signing
@@ -44,7 +45,7 @@ pub trait UptimeCheckerActor {
     /// - allowed callers: owner of the peerID.
     /// - impacted state: edits the CheckInfo for the peerID
     /// in checkers.
-    fn edit_checker(params: NodeInfo) -> Result<(), Error>;
+    fn edit_checker(params: NodeInfoPayload) -> Result<(), Error>;
 
     /// Edits the node information of a member. The method
     /// checks that the owner of the peer is the one signing
@@ -55,7 +56,7 @@ pub trait UptimeCheckerActor {
     /// - allowed callers: owner of the peerID.
     /// - impacted state: edits the NodeInfo for the peerID
     /// in members.
-    fn edit_member(params: NodeInfo) -> Result<(), Error>;
+    fn edit_member(params: NodeInfoPayload) -> Result<(), Error>;
 
     /// Removes a checker from the list. Only the owner of
     /// the PeerID is allowed to remove themselves from the list.
@@ -63,7 +64,7 @@ pub trait UptimeCheckerActor {
     /// - methodNum: 6
     /// - allowed callers: owner of the peerID.
     /// - impacted state: removes peerID from the checkers HAMT.
-    fn rm_checker(params: PeerID) -> Result<(), Error>;
+    fn rm_checker() -> Result<(), Error>;
 
     /// Removes a member from the list. Only the owner of
     /// the PeerID is allowed to remove themselves from the list.
@@ -71,7 +72,7 @@ pub trait UptimeCheckerActor {
     /// - methodNum: 7
     /// - allowed callers: owner of the peerID.
     /// - impacted state: removes peerID from the members HAMT.
-    fn rm_member(params: PeerID) -> Result<(), Error>;
+    fn rm_member() -> Result<(), Error>;
 
     /// Reports a checker for being offline. This registers
     /// a new offline vote for the checker with the specified
@@ -99,7 +100,7 @@ pub trait UptimeCheckerActor {
     /// a new peerID and a vote, or a new vote for a PeerID, and
     /// it removes PeerID from checkers if the number of
     /// votes > 2/3 checkers
-    fn report_checker(params: PeerID) -> Result<(), Error>;
+    fn report_checker(param: ReportPayload) -> Result<(), Error>;
 }
 
 pub trait LoadableState {
@@ -107,18 +108,20 @@ pub trait LoadableState {
 
     fn upsert_node(&mut self, node: NodeInfo) -> Result<(), Error>;
 
-    fn remove_node(&mut self, id: &PeerID) -> Result<(), Error>;
+    fn remove_node(&mut self, id: &ActorID) -> Result<(), Error>;
+
+    fn is_checker(&self, caller: &ActorID) -> Result<bool, Error>;
 
     fn upsert_checker(&mut self, node: NodeInfo) -> Result<(), Error>;
 
-    fn remove_checker(&mut self, id: &PeerID) -> Result<(), Error>;
+    fn remove_checker(&mut self, id: &ActorID) -> Result<(), Error>;
 
     /// Removes the checker without performing owner check. Use with care.
-    fn remove_checker_unchecked(&mut self, id: &PeerID) -> Result<(), Error>;
+    fn remove_checker_unchecked(&mut self, id: &ActorID) -> Result<(), Error>;
 
-    fn has_voted(&self, p: &PeerID) -> bool;
+    fn has_voted(&self, reported: &ActorID, voter: &ActorID) -> Result<bool, Error>;
 
-    fn record_voted(&mut self, p: &PeerID) -> usize;
+    fn record_voted(&mut self, reported: &ActorID, voter: &ActorID) -> Result<usize, Error>;
 
     fn total_checkers(&self) -> usize;
 
