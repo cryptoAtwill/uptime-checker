@@ -35,8 +35,8 @@ impl HamtState {
     fn upsert(store: &Blockstore, map_cid: &Cid, node: NodeInfo) -> Result<Cid, Error> {
         let mut map = get_map_from_cid(map_cid, store)?;
 
-        let bytes = &node.creator().to_be_bytes()[..];
-        let id = BytesKey::from(bytes);
+        let str = &node.creator().to_string()[..];
+        let id = BytesKey::from(str);
         let n = map.get(&id)?.unwrap_or(&node);
 
         Self::ensure_owner(n)?;
@@ -48,7 +48,7 @@ impl HamtState {
     fn remove(store: &Blockstore, map_cid: &Cid, id: &ActorID) -> Result<Cid, Error> {
         let mut map = get_map_from_cid(map_cid, store)?;
 
-        let key = BytesKey::from(&id.to_be_bytes()[..]);
+        let key = BytesKey::from(&id.to_string()[..]);
         let n = map.get(&key)?.ok_or(Error::NotExists)?;
 
         Self::ensure_owner(n)?;
@@ -63,8 +63,8 @@ impl LoadableState for HamtState {
         let total_checkers = nodes.len();
         let mut checker_map = make_empty_map::<_, NodeInfo>(&Blockstore);
         for n in nodes {
-            let bytes = &n.creator().to_be_bytes()[..];
-            checker_map.set(BytesKey::from(bytes), n)?;
+            let str = &n.creator().to_string()[..];
+            checker_map.set(BytesKey::from(str), n)?;
         }
         Ok(HamtState {
             members: make_empty_map::<_, NodeInfo>(&Blockstore).flush()?,
@@ -86,7 +86,7 @@ impl LoadableState for HamtState {
 
     fn is_checker(&self, checker: &ActorID) -> Result<bool, Error> {
         let map = get_map_from_cid::<_, NodeInfo>(&self.checkers, &Blockstore{})?;
-        let key = BytesKey::from(&checker.to_be_bytes()[..]);
+        let key = BytesKey::from(&checker.to_string()[..]);
         Ok(map.contains_key(&key)?)
     }
 
@@ -102,7 +102,7 @@ impl LoadableState for HamtState {
 
     fn remove_checker_unchecked(&mut self, checker: &ActorID) -> Result<(), Error> {
         let mut map = get_map_from_cid::<_, NodeInfo>(&self.checkers, &Blockstore{})?;
-        map.delete(&BytesKey::from(&checker.to_be_bytes()[..]))?;
+        map.delete(&BytesKey::from(&checker.to_string()[..]))?;
         self.checkers = map.flush()?;
         Ok(())
     }
@@ -110,7 +110,7 @@ impl LoadableState for HamtState {
     fn has_voted(&self, reported: &ActorID, voter: &ActorID) -> Result<bool, Error> {
         let map = get_map_from_cid::<_, Votes>(&self.offline_checkers, &Blockstore{})?;
         Ok(
-            map.get(&BytesKey::from(&reported.to_be_bytes()[..]))?
+            map.get(&BytesKey::from(&reported.to_string()[..]))?
                 .map(|v| v.has_voted(voter))
                 .unwrap_or(false)
         )
@@ -118,7 +118,7 @@ impl LoadableState for HamtState {
 
     fn record_voted(&mut self, reported: &ActorID, voter: &ActorID) -> Result<usize, Error> {
         let mut map = get_map_from_cid::<_, Votes>(&self.offline_checkers, &Blockstore{})?;
-        let reported_key = BytesKey::from(&reported.to_be_bytes()[..]);
+        let reported_key = BytesKey::from(&reported.to_string()[..]);
 
         match map.get(&reported_key)? {
             None => {

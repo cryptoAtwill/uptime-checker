@@ -11,7 +11,6 @@ pub enum Error {
     NotOwner,
     NotExists,
     NotCaller,
-    Debug(u32),
 }
 
 impl Error {
@@ -28,7 +27,6 @@ impl Error {
             Error::NotOwner => 10009,
             Error::NotExists => 10010,
             Error::NotCaller => 10011,
-            Error::Debug(u) => *u
         }
     }
 
