@@ -87,6 +87,8 @@ impl <S: LoadableState> UptimeCheckerActor for Actor<S> {
             s.remove_checker_unchecked(&p.checker)?;
         }
 
+        s.save()?;
+
         Ok(())
     }
 }
