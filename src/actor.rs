@@ -3,8 +3,8 @@ use crate::traits::{LoadableState, UptimeCheckerActor};
 use crate::types::{InitParams, MultiAddr, NodeInfo, NodeInfoPayload, PeerID, ReportPayload};
 use crate::{ensure, Error};
 
-const THRESHOLD_NUM: usize = 20000;
-const THRESHOLD_DUM: usize = 30000;
+const THRESHOLD_NUMERATOR: usize = 20000;
+const THRESHOLD_DENOMINATOR: usize = 30000;
 
 pub struct Actor<S: LoadableState> {
     _phantom: PhantomData<S>
@@ -25,7 +25,7 @@ impl <S: LoadableState> UptimeCheckerActor for Actor<S> {
                     .collect(),
             ));
         }
-        let state = S::new(nodes)?;
+        let state = S::new(nodes, &params.voting_duration)?;
         state.save()?;
         Ok(())
     }
@@ -77,18 +77,25 @@ impl <S: LoadableState> UptimeCheckerActor for Actor<S> {
         let caller = fvm_sdk::message::caller();
 
         ensure!(s.is_checker(&caller)?, Error::NotCaller)?;
-        ensure!(!s.has_voted(&p.checker, &caller)?, Error::AlreadyVoted)?;
+        ensure!(!s.has_voted(&p.checker, &caller)?, Error::AlreadyVoted(caller))?;
 
         let votes = s.record_voted(&p.checker, &caller)?;
 
         // perform checks
         let total_checkers = s.total_checkers();
-        if total_checkers * THRESHOLD_NUM / THRESHOLD_DUM < votes {
+        if Self::calculate_voting_threshold(total_checkers) < votes {
             s.remove_checker_unchecked(&p.checker)?;
         }
 
         s.save()?;
 
         Ok(())
+    }
+}
+
+impl <S: LoadableState> Actor<S> {
+    fn calculate_voting_threshold(total: usize) -> usize {
+        // numerator is by default 2 and denominator is 3, hence the ratio is 0.67
+        total * THRESHOLD_NUMERATOR / THRESHOLD_DENOMINATOR
     }
 }

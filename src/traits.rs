@@ -104,7 +104,7 @@ pub trait UptimeCheckerActor {
 }
 
 pub trait LoadableState {
-    fn new(nodes: Vec<NodeInfo>) -> Result<Self, Error> where Self: Sized;
+    fn new(nodes: Vec<NodeInfo>, voting_duration: &Option<ChainEpoch>) -> Result<Self, Error> where Self: Sized;
 
     fn upsert_node(&mut self, node: NodeInfo) -> Result<(), Error>;
 
@@ -125,7 +125,7 @@ pub trait LoadableState {
 
     fn total_checkers(&self) -> usize;
 
-    fn vote_threshold(&self) -> ChainEpoch;
+    fn vote_duration_threshold(&self) -> ChainEpoch;
 
     fn load() -> Result<Self, Error> where Self: Sized;
 

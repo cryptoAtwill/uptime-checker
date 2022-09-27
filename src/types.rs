@@ -99,4 +99,5 @@ pub struct InitParams {
     pub ids: Vec<String>,
     pub creators: Vec<ActorID>,
     pub addresses: Vec<Vec<String>>,
+    pub voting_duration: Option<ChainEpoch>,
 }

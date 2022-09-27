@@ -1,6 +1,8 @@
+use fvm_shared::ActorID;
+
 /// All the error from the actor crate
 pub enum Error {
-    AlreadyVoted,
+    AlreadyVoted(ActorID),
     CannotDeserialize,
     FVMIpldHamt(fvm_ipld_hamt::Error),
     Anyhow(anyhow::Error),
@@ -16,7 +18,7 @@ pub enum Error {
 impl Error {
     pub fn code(&self) -> u32 {
         match self {
-            Error::AlreadyVoted => 10002,
+            Error::AlreadyVoted(_) => 10002,
             Error::CannotDeserialize => 10003,
             Error::FVMIpldHamt(_) => 10004,
             Error::Anyhow(_) => 10005,
@@ -33,6 +35,7 @@ impl Error {
     pub fn msg(&self) -> String {
         match self {
             Error::FVMSharedAddress(e) => format!("{:?}", e),
+            Error::AlreadyVoted(a) => format!("actor {:?} already voted", a),
             _ => String::from("")
         }
     }

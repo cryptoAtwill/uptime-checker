@@ -10,6 +10,8 @@ use multihash::Code;
 use serde::{Deserialize, Serialize};
 use crate::traits::LoadableState;
 
+const DEFAULT_VOTING_DURATION: ChainEpoch = 200;
+
 /// The state object.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HamtState {
@@ -21,6 +23,8 @@ pub struct HamtState {
     offline_checkers: Cid, // HAMT<BytesKey, Votes>
     /// The total number of checkers
     total_checkers: usize,
+    /// The voting duration threshold
+    voting_duration: ChainEpoch,
 }
 
 impl HamtState {
@@ -59,7 +63,7 @@ impl HamtState {
 }
 
 impl LoadableState for HamtState {
-    fn new(nodes: Vec<NodeInfo>) -> Result<Self, Error> {
+    fn new(nodes: Vec<NodeInfo>, voting_duration: &Option<ChainEpoch>) -> Result<Self, Error> {
         let total_checkers = nodes.len();
         let mut checker_map = make_empty_map::<_, NodeInfo>(&Blockstore);
         for n in nodes {
@@ -70,7 +74,8 @@ impl LoadableState for HamtState {
             members: make_empty_map::<_, NodeInfo>(&Blockstore).flush()?,
             checkers: checker_map.flush()?,
             offline_checkers: make_empty_map::<_, Votes>(&Blockstore).flush()?,
-            total_checkers
+            total_checkers,
+            voting_duration: voting_duration.unwrap_or(DEFAULT_VOTING_DURATION)
         })
     }
 
@@ -129,16 +134,20 @@ impl LoadableState for HamtState {
                 Ok(1)
             }
             Some(votes) => {
-                let t = self.vote_threshold();
+                let t = self.vote_duration_threshold();
                 if !votes.within_threshold(fvm_sdk::network::curr_epoch(), t) {
                     // delete the current round and start again
-                    map.delete(&reported_key)?;
+                    let mut votes = Votes::new(fvm_sdk::network::curr_epoch());
+                    votes.vote(voter);
+
+                    map.set(reported_key, votes)?;
+
                     self.offline_checkers = map.flush()?;
                     return Ok(0);
                 }
 
                 if votes.has_voted(voter) {
-                    return Err(Error::AlreadyVoted);
+                    return Err(Error::AlreadyVoted(*voter));
                 }
 
                 // TODO: make votes HAMT as well
@@ -154,11 +163,9 @@ impl LoadableState for HamtState {
         }
     }
 
-    fn total_checkers(&self) -> usize {
-        self.total_checkers
-    }
+    fn total_checkers(&self) -> usize { self.total_checkers }
 
-    fn vote_threshold(&self) -> ChainEpoch { 200 }
+    fn vote_duration_threshold(&self) -> ChainEpoch { self.voting_duration }
 
     fn load() -> Result<Self, Error> {
         let root = fvm_sdk::sself::root()?;
